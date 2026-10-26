@@ -1,0 +1,46 @@
+/* Another Hero · 웹 게임 전투 화면 (시안 index.html 위에 덧씀) */
+.battle-layer{position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+.bfield,.bfx{position:absolute;inset:0}
+
+/* 유닛: 발 밑(x, groundY)이 기준점 */
+.bu{position:absolute;left:0;top:0;width:0;height:0;will-change:transform}
+.bu-body{position:absolute;left:0;bottom:0;margin-left:0;transform-origin:50% 100%}
+.bu-body{translate:-50% 0}
+.bu-fig{width:100%;height:100%;object-fit:contain;object-position:50% 100%;filter:drop-shadow(0 10px 8px rgba(40,25,90,.35))}
+/* 파티(사람) 그림만 좌우 반전 — 몬스터 시트는 그대로 */
+.bu.party .bu-fig{transform:scaleX(-1)}
+.bu-sheet{position:absolute;background-repeat:no-repeat;filter:drop-shadow(0 8px 6px rgba(40,25,90,.3))}
+.bu-body.flash .bu-fig,.bu-body.flash .bu-sheet{filter:brightness(1.25) sepia(1) saturate(5) hue-rotate(-40deg)}
+.bu.down .bu-body{transform:rotate(90deg)!important;translate:-30% 0;filter:grayscale(1) brightness(.6);opacity:.65}
+.bu.ghost{opacity:.45}
+.bu-summon{position:absolute;left:-40px;top:30%;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e3d4ff,#a98bf0);color:#fff;display:grid;place-items:center;font-size:30px;box-shadow:0 0 18px rgba(170,130,255,.8);animation:bsum 1s ease-in-out infinite alternate}
+@keyframes bsum{to{transform:translateY(-12px)}}
+
+.bu-top{position:absolute;left:0;translate:-50% 0;display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap}
+.bu-hpwrap{display:flex;align-items:center;gap:6px}
+.bu-hp{display:block;height:14px;border-radius:999px;background:rgba(20,14,40,.65);border:2px solid rgba(255,255,255,.85);overflow:hidden}
+.bu-hp i{display:block;height:100%;width:100%;background:linear-gradient(#7fe08a,#3fb85a);transition:width .12s}
+.bu.enemy .bu-hp i{background:linear-gradient(#ff8a8a,#e04848)}
+.bu.boss .bu-hp{height:20px}
+.bu-st{font-size:20px;font-weight:900;color:#ffe96b;text-shadow:0 0 4px #000,0 2px 3px #000;min-height:24px}
+.bu-name{position:absolute;left:0;top:10px;translate:-50% 0;white-space:nowrap;text-align:center;font-family:var(--f-title);font-size:24px;line-height:1.1;color:#fff;text-shadow:0 0 4px rgba(30,20,60,.9),0 2px 4px rgba(30,20,60,.9)}
+.bu-name small{display:block;font-family:var(--f-body);font-size:17px;font-weight:900;color:#c8ffb8}
+.bu.enemy .bu-name{font-size:21px;opacity:.9}
+.bu.boss .bu-name{font-size:30px;color:#ffd6e2}
+
+/* 데미지 숫자 · 보상 글자 */
+.bfx-txt{position:absolute;translate:-50% 0;white-space:nowrap;font-weight:900;font-family:var(--f-body);text-shadow:0 0 4px #000,0 2px 4px #000,0 0 1px #000;animation:bfxUp 1s ease-out forwards}
+@keyframes bfxUp{0%{transform:translateY(8px) scale(.8);opacity:0}12%{transform:translateY(0) scale(1.1);opacity:1}70%{opacity:1}100%{transform:translateY(-70px);opacity:0}}
+.bfx-ring{position:absolute;translate:-50% -50%;border-radius:50%;border:8px solid var(--c);box-shadow:0 0 30px var(--c),inset 0 0 30px var(--c);animation:bfxRing .35s ease-out forwards}
+@keyframes bfxRing{from{transform:scale(.3);opacity:.95}to{transform:scale(1);opacity:0}}
+
+/* 배너 (시안 리본) · 진행도 */
+.bbanner{position:absolute!important;left:50%;top:250px;translate:-50% 0;margin:0;animation:bban .35s ease-out}
+@keyframes bban{from{transform:scale(.7);opacity:0}to{transform:none;opacity:1}}
+.bhud{position:absolute;right:183px;top:104px;z-index:3;width:330px;display:flex;flex-direction:column;gap:6px;background:rgba(255,255,255,.92);border:3px solid #fff;border-radius:22px;padding:8px 18px 10px;font-size:20px;font-weight:900;color:var(--ink);box-shadow:0 4px 12px rgba(60,50,110,.15)}
+.bhud i{display:block;height:10px;border-radius:999px;background:linear-gradient(90deg,var(--pink) var(--w),#f1e9fb var(--w))}
+.diff.rep{background:var(--mint)}
+.spdbtn{position:absolute;right:527px;top:110px;width:78px;height:54px;border-radius:25px;background:#fff;border:4px solid #c9c2f2;z-index:4;font-size:22px;font-weight:900;color:var(--lav-deep)}
+.mbtn .badge{min-width:40px;padding:0 8px;font-size:18px}
+.attr.noattr{background:#cfc9e6}
+@media (prefers-reduced-motion: reduce){.bfx-txt,.bfx-ring,.bu-summon{animation-duration:.01s}}
