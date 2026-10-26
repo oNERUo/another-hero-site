@@ -1,4 +1,9 @@
 /* Another Hero · 웹 게임 전투 화면 (시안 index.html 위에 덧씀) */
+/* 횡스크롤 배경: 정방향 · 반전 타일을 이어 붙인 띠를 왼쪽으로 이동 */
+.bbg-scroll{position:absolute;inset:0;overflow:hidden;background:#cfe3f5}
+.bbg-track{position:absolute;left:0;bottom:0;display:flex;will-change:transform}
+.bbg-track i{flex:none;background-size:100% 100%;background-repeat:no-repeat}
+.bbg-track i.mir{transform:scaleX(-1)}
 .battle-layer{position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden}
 .bfield,.bfx{position:absolute;inset:0}
 

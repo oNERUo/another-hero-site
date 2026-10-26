@@ -479,8 +479,29 @@ function applyGround(){
   const set = () => {
     const w = img.naturalWidth || 1920, h = img.naturalHeight || 1080, sc = Math.max(1920 / w, 1080 / h);
     B.groundY = Math.round(1080 - line * h * sc);
+    B.tile = {src: A[key], w: Math.ceil(w * sc), h: Math.ceil(h * sc)};
+    buildTrack();
   };
   img.onload = set; img.src = A[key]; if(img.complete) set();
+}
+/* ---------- 횡스크롤 배경 (Unity GroundScroller: 걷는 동안 1초에 160px) ----------
+   배경 한 장을 정방향 · 좌우반전 번갈아 이어 붙여서 이음새 없이 왼쪽으로 흘려요 */
+const SCROLL_SPEED = 160;
+function buildTrack(){
+  const track = document.querySelector('#game .bbg-track');
+  B.track = track;
+  if(!track || !B.tile) return;
+  const t = B.tile;
+  if(track.dataset.src === t.src) return;
+  track.dataset.src = t.src;
+  track.innerHTML = [0, 1, 2, 3].map(i => `<i class="${i % 2 ? 'mir' : ''}" style="width:${t.w}px;height:${t.h}px;background-image:url(${t.src})"></i>`).join('');
+  scrollTick(0);
+}
+function scrollTick(dx){
+  B.scrollX = (B.scrollX || 0) + dx;
+  if(!B.track || !B.tile) return;
+  const loop = B.tile.w * 2, x = B.scrollX % loop;
+  B.track.style.transform = `translateX(${-x - (B.tile.w - 1920) / 2}px)`;
 }
 function createView(u, x){
   const el = document.createElement('div');
@@ -636,6 +657,7 @@ function frame(now){
   const paused = (typeof IN !== 'undefined' && IN.open) || (S.popup && S.popup.kind === 'quitdone');
   if(!paused){
     battleTick(dt * G.speed);
+    if(B.walking) scrollTick(SCROLL_SPEED * dt * G.speed);
     if(B.bannerT > 0){ B.bannerT -= dt; if(B.bannerT <= 0 && B.bannerEl) B.bannerEl.hidden = true; }
   }
   [...B.party, ...B.enemies].forEach(u => viewTick(u, paused ? 0 : dt));
@@ -662,7 +684,8 @@ renderLobby = function(){
   const unread = S.mails.filter(m => !m.done).length;
   const b = S.battle, st = stageOf(b.stage);
   return `
-  ${battleBg(b.stage, b.diff)}
+  <div class="bbg-scroll"><div class="bbg-track"></div></div>
+  ${b.diff === 'HARD' ? '<div class="bbg-tint hard"></div>' : '<div class="bbg-tint easy"></div>'}
   <div id="battle-slot"></div>
   <div class="battle-tag" style="--tone:${st.tone}"><b>${st.no}-${b.round}</b> ${st.name} <span class="diff ${b.diff}">${b.diff}</span>${G.repeating ? '<span class="diff rep">반복</span>' : ''}</div>
   <div class="bhud"></div>
@@ -687,6 +710,7 @@ render = function(){
   if(S.screen === 'lobby'){
     const slot = document.getElementById('battle-slot');
     if(slot){ slot.replaceWith(B.layer); B.hudEl = document.querySelector('#game .bhud'); hud(); }
+    buildTrack();
   }
 };
 const _go = go;
