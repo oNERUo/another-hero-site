@@ -121,12 +121,15 @@ addOfflineNotice = function(){
 };
 
 /* ---------- 오프라인 보상 (OfflineRewardSystem) ---------- */
-function calcOffline(){
+/* basis = 기준 스테이지 번호(1-1 = 1), off = 오프라인 시간(초). 생략하면 저장된 마지막 접속 기준 */
+function calcOffline(basis, off){
   S.offline = {shown: true, items: {}, hours: '', rate: R.offlineRate.gold, basis: ''};
-  if(!G.lastAccess || G.lastCleared <= 0) return;
-  const off = (Date.now() - G.lastAccess) / 1000;
+  if(basis === undefined){
+    if(!G.lastAccess || G.lastCleared <= 0) return;
+    basis = G.lastCleared; off = (Date.now() - G.lastAccess) / 1000;
+  }
   const eff = Math.min(off, R.offlineMaxHours * 3600);
-  const n = G.lastCleared - 1, r = Math.floor(n / 10), s = n % 10, st = stageInfo(r, s), rw = st.rewards;
+  const n = basis - 1, r = Math.floor(n / 10), s = n % 10, st = stageInfo(r, s), rw = st.rewards;
   const clears = Math.floor(eff / Math.max(1, rw.avgClearSeconds));
   if(clears < 1) return;
   const boss = !!st.boss;
@@ -804,8 +807,14 @@ document.addEventListener('visibilitychange', () => { if(document.hidden) save()
 /* =====================================================================
    부팅
    ===================================================================== */
+/* 시연용: 사이트에 들어올 때마다 처음부터 (오프닝 만화 → 로비 + 오프라인 보상 팝업).
+   false 로 바꾸면 저장된 진행을 이어서 하고, 오프닝은 처음 한 번만 나와요. */
+const FRESH_EACH_VISIT = true;
+/* 시연용 오프라인 보상 기준: 1-1 들판에서 최대 8시간 (Unity 규칙 그대로 계산) */
+const DEMO_OFFLINE = {basis: 1, hours: 8};
 function boot(){
-  const loaded = load();
+  if(FRESH_EACH_VISIT){ try { localStorage.removeItem(SAVE_KEY); } catch(e){} }
+  const loaded = !FRESH_EACH_VISIT && load();
   if(!loaded) newGame();
   S.screen = 'lobby'; S.gTab = 'model'; S.sel = {}; S.popup = null;
   /* 저장이 깨졌을 때 안전장치 */
@@ -813,15 +822,17 @@ function boot(){
   G.region = Math.max(0, Math.min(UD.regions.length - 1, G.region | 0));
   G.stage = Math.max(0, Math.min(9, G.stage | 0));
   S.stageView = {stage: G.region + 1, diff: G.diff};
-  calcOffline();
+  if(FRESH_EACH_VISIT) calcOffline(DEMO_OFFLINE.basis, DEMO_OFFLINE.hours * 3600); else calcOffline();
   buildLayer();
   buildParty();
   startStage();
   render(); fit();
   requestAnimationFrame(t => { lastT = t; requestAnimationFrame(frame); });
-  let introSeen = false; try { introSeen = localStorage.getItem('ah_intro_done') === '1'; } catch(e){}
+  let introSeen = false;
+  if(!FRESH_EACH_VISIT){ try { introSeen = localStorage.getItem('ah_intro_done') === '1'; } catch(e){} }
   if(!introSeen){
-    const op = () => introOpen('pro', () => { go('lobby'); toast('모험가 모집에서 무료 10회를 먼저 뽑아 보세요'); });
+    /* 만화가 끝나면 로비 → 오프라인 보상 팝업부터 */
+    const op = () => introOpen('pro', () => { go('lobby'); });
     if(document.readyState === 'complete') op(); else window.addEventListener('load', op, {once: true});
   }
 }
