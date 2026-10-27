@@ -21,6 +21,38 @@ const COUNTER = {1: 2, 2: 3, 3: 4, 4: 1, 5: 6, 6: 5};   // 물→불→얼음→
 const isCounter = (a, d) => COUNTER[a] === d;
 const STAGE_BG = ['bgField', 'bgSnow', 'bgRuin'];
 
+/* ---------- 스킬 · 기본공격 효과음 (assets/sfx/코드_번호.wav, 0 = 기본공격, 1~3 = 스킬 1~3) ---------- */
+const SFX_CODE = {Valteas: 'VAL', Shirian: 'SHE', Retion: 'RET', Arben: 'ARB', Nemesis: 'NEM',
+  Runtein: 'RUN', Lumiel: 'LUM', Orpheia: 'ORP', Serapia: 'SER', Astrion: 'AST'};
+const BSFX = {ctx: null, buf: {}, playing: 0, MAX: 6};
+function battleAudioOk(){
+  return typeof SND !== 'undefined' && SND.sfx && SND.unlocked && S.screen === 'lobby' && !S.popup && !(typeof IN !== 'undefined' && IN.open);
+}
+/* 전투 소리는 로비(전투 화면)에 있을 때만 (다른 창을 볼 때 시끄럽지 않게) */
+function battleSfx(k, vol = 1){ if(battleAudioOk()) sfx(k, vol); }
+function skillSfx(model, slot, vol = 1){
+  const c = CHAR_BY_MODEL[model], code = c && SFX_CODE[c.key];
+  if(!code || !battleAudioOk()) return;
+  const name = `${code}_${slot}`;
+  try {
+    if(!BSFX.ctx) BSFX.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = BSFX.ctx;
+    if(ctx.state === 'suspended') ctx.resume();
+    const go = buf => {
+      if(!buf || BSFX.playing >= BSFX.MAX) return;   // 동시에 너무 많이 겹치지 않게
+      const src = ctx.createBufferSource(), g = ctx.createGain();
+      g.gain.value = Math.max(0, Math.min(1, SND.sfxVol * vol));
+      src.buffer = buf; src.connect(g).connect(ctx.destination);
+      BSFX.playing++; src.onended = () => BSFX.playing--;
+      src.start();
+    };
+    const b = BSFX.buf[name];
+    if(b instanceof AudioBuffer) go(b);
+    else if(!b) BSFX.buf[name] = fetch(`assets/sfx/${name}.wav`).then(r => r.arrayBuffer()).then(a => ctx.decodeAudioData(a))
+      .then(x => { BSFX.buf[name] = x; go(x); }).catch(() => { BSFX.buf[name] = 'fail'; });
+  } catch(e){}
+}
+
 /* 규칙 상수 (Unity BattleManager 인스펙터 값) */
 const R = {
   minDamage: 1, critMul: 1.5, waveDelay: 1.2, waveRestHeal: .15, walkIn: .7,
@@ -224,7 +256,7 @@ function dealDamage(att, t, mul, forceCrit){
   if(counter) dmg *= 1.2;
   const fin = Math.max(1, Math.round(dmg));
   t.hp = Math.max(0, t.hp - fin);
-  if(t.team === 'enemy' && performance.now() - B.hitSfxT > 90){ B.hitSfxT = performance.now(); sfx(crit ? 'S34' : 'S33', crit ? .7 : .35); }
+  if(t.team === 'enemy' && performance.now() - B.hitSfxT > 90){ B.hitSfxT = performance.now(); battleSfx(crit ? 'S34' : 'S33', crit ? .6 : .25); }
   viewHp(t); viewFlash(t);
   popup(t, (crit ? fin + '!' : '' + fin) + (counter ? '▲' : ''), t.team === 'party' ? '#ff6b6b' : crit ? '#ffa020' : '#ffffff', crit ? 44 : 32);
   if(isDead(t)){ t.statuses = []; statusText(t); viewDead(t); onUnitDied(t); }
@@ -298,6 +330,7 @@ function tickUnit(u, dt){
     const sk = u.skills[i];
     if(u.cds[i] > 0 || !canCast(u, sk)) continue;
     castSkill(u, sk);
+    if(u.adv && i < 3) skillSfx(u.adv.model, i + 1, .9);
     u.cds[i] = cooldownOf(u, i) + (sk.cdAfter ? Math.max(0, ...sk.effects.map(e => e.duration)) : 0);
     break;
   }
@@ -305,7 +338,7 @@ function tickUnit(u, dt){
   u.gauge += dt * aspdOf(u);
   if(u.gauge >= 1){
     const t = target(u);
-    if(t){ u.gauge -= 1; if(t.view) viewLunge(u, t); dealDamage(u, t, 1, false); }
+    if(t){ u.gauge -= 1; if(t.view) viewLunge(u, t); if(u.adv) skillSfx(u.adv.model, 0, .45); dealDamage(u, t, 1, false); }
     else u.gauge = 1;
   }
 }
@@ -372,7 +405,7 @@ function spawnBoss(){
   addEnemy(boss, enemyPos(0, L.bossSize), L.bossSize, 0);
   B.waveRested = false; setWalking(false);
   banner(`보스 등장! ${UD.monsters[boss.monster].name}`, 1.5);
-  sfx('S36');
+  battleSfx('S36');
   hud();
 }
 function addEnemy(spawn, x, size, index){
@@ -391,7 +424,7 @@ function clearEnemies(){ B.enemies.forEach(u => u.view && u.view.el.remove()); B
 
 function onUnitDied(u){
   if(u.team !== 'enemy') return;
-  sfx('S35', u.isBoss ? 1 : .7);
+  battleSfx('S35', u.isBoss ? 1 : .7);
   if(u.isBoss) B.bossDefeated = true; else B.kills++;
   const rw = rewardsOf(G.region, G.stage, G.diff), at = viewTop(u, 30);
   if(u.isBoss){ drop('gold', rw.bossGold, at, 0); drop('shard', rw.bossManaShard, at, 1); drop('stone', rw.bossGem, at, 2); }
@@ -414,7 +447,7 @@ function giveExp(amount){
     while(a.lv < LV_MAX && a.exp >= expNeed(a.lv)){ a.exp -= expNeed(a.lv); a.lv++; up++; }
     if(a.lv >= LV_MAX) a.exp = 0;
     if(up && u.view){
-      sfx('S38'); nameText(u);
+      battleSfx('S38'); nameText(u);
       floatText(viewTop(u, 110), `LEVEL UP! Lv.${a.lv}`, '#8cff8c', 32);
       ring(viewCenter(u), u.view.w * 2, [.55, 1, .55], .6);
     }
@@ -463,7 +496,7 @@ function battleTick(dt){
         if(G.diff === 'EASY') G.lastCleared = numberOf(G.region, G.stage);
         const last = G.region === UD.regions.length - 1 && G.stage === regionOf(G.region).stages.length - 1;
         if(G.diff === 'EASY'){ deliver(`${G.region + 1}-${G.stage + 1}`); if(last) deliver('e'); }
-        sfx('J1', .8);
+        battleSfx('J1', .8);
         banner(first ? `${G.region + 1}-${G.stage + 1} 최초 클리어! 보상 획득` : `${G.region + 1}-${G.stage + 1} 클리어!`, R.clearDelay);
         save();
         wait(R.clearDelay, nextStage);
